@@ -116,14 +116,18 @@ def complete_undocking_route(payload: dict = Body(...)):
 def rebalance_route():
     return rebalance_zones(cargo_collection, zone_collection)
 print("FastAPI app is starting...")
+
 @app.post("/place-item")
-def place_item(item: dict):
-    try:
-        item["type"] = "item"  # ensure type for indexing
-        result = store_item(item, cargo_collection, zone_collection)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=400,detail=str(e))
+def place_item(item: Item):
+    
+    item_dict = item.dict()  # safely converts Pydantic model to dict
+    start, end = store_item(item_dict, cargo_collection, zone_collection)
+    
+    if start and end:
+        return {"start_position": start, "end_position": end}
+    else:
+        raise HTTPException(status_code=400, detail="No suitable space found in any container.")
+
 
 #-------------------------------------------------
 
@@ -166,12 +170,14 @@ async def import_items(file: UploadFile = File(...)):
 
             store_item(item_data, cargo_collection, zone_collection)
             inserted_items.append(item.item_id)
-
+            errors = []
         except Exception as e:
-            print(f"Error inserting item {record}: {e}")
+            errors.append({"item": record.get("item_id"), "error": str(e)})
+
 
     return {
         "inserted_items": inserted_items,
+        "errors": errors,
         "count": len(inserted_items)
     }
 
@@ -227,3 +233,11 @@ async def import_containers(file: UploadFile = File(...)):
 def get_logs():
     logs = list(log_collection.find({}, {"_id": 0}))
     return{"logs":logs}
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Or restrict to specific domains
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
