@@ -87,3 +87,4 @@ def retrieve_item(item_id, cargo_collection, zone_collection):
         "retrievalSteps": retrieval_steps,
         "steps_required": len(retrieval_steps)
     }
+
