@@ -1,4 +1,9 @@
 fastapi
+redis
+types-redis
+uvicorn
+streamlit-option-menu
+fastapi
 uvicorn
 pydantic
 streamlit

@@ -71,18 +71,21 @@ def get_waste_items():
     result = identify_waste_items(cargo_collection)
     return {"success": True, "wasteItems": result}
 
-@app.post("/api/waste/return-plan")
-def return_plan(
-    payload: dict = Body(...)
-):
-    undocking_container_id = payload.get("undockingContainerId")
-    undocking_date = payload.get("undockingDate")
-    max_weight = payload.get("maxWeight")
 
+@app.post("/api/waste/return-plan")
+def return_plan(payload: dict = Body(...)):
     try:
+        undocking_container_id = payload.get("undockingContainerId")
+        undocking_date_str = payload.get("undockingDate")
+        max_weight = float(payload.get("maxWeight", 0))
+
+        if not undocking_container_id or not undocking_date_str:
+            raise HTTPException(status_code=400, detail="Missing required fields")
+
+        undocking_date = datetime.fromisoformat(undocking_date_str)
+
         result = plan_return_of_waste(
             cargo_collection,
-            zone_collection,
             undocking_container_id,
             undocking_date,
             max_weight
@@ -91,20 +94,21 @@ def return_plan(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @app.post("/api/waste/complete-undocking")
-def complete_undocking_route(
-    payload: dict = Body(...)
-):
-    undocking_container_id = payload.get("undockingContainerId")
-    timestamp = payload.get("timestamp")
+def complete_undocking_route(payload: dict = Body(...)):
+    try:
+        undocking_container_id = payload.get("undockingContainerId")
+        if not undocking_container_id:
+            raise HTTPException(status_code=400, detail="Missing container ID")
 
-    removed = complete_undocking(
-        cargo_collection,
-        undocking_container_id,
-        timestamp
-    )
-    return {"success": True, "itemsRemoved":removed}
-
+        removed = complete_undocking(
+            cargo_collection,
+            undocking_container_id
+        )
+        return {"success": True, "itemsRemoved": removed}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 

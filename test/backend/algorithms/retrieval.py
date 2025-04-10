@@ -1,24 +1,39 @@
-# from pymongo.collection import Collection
 from datetime import date
-
-
 from algorithms import logs
 from configuration import log_collection
 
-def log_action(
-    log_collection,
-    userId=item.get("retrieved_by", "system"),
-    actionType="retrieval",
-    itemId=item["item_id"],
-    details={
+
+def log_action(log_collection, item, userId=None, actionType="retrieval"):
+    """
+    Logs an action related to item retrieval.
+
+    Args:
+        log_collection: The collection where logs are stored.
+        item: The item dictionary to log.
+        userId: ID of the user who performed the action. Defaults to item["retrieved_by"] or "system".
+        actionType: Type of the action, default is "retrieval".
+    """
+    if userId is None:
+        userId = item.get("retrieved_by", "system")
+
+    itemId = item["item_id"]
+    details = {
         "fromContainer": item["container_id"],
         "zone": item.get("zone", ""),
         "coordinates": {
-            "start": item["startCoordinates"],
-            "end": item["endCoordinates"]
+            "start": item.get("startCoordinates"),
+            "end": item.get("endCoordinates")
         }
     }
-)
+
+    logs.log_action(
+        log_collection,
+        userId=userId,
+        actionType=actionType,
+        itemId=itemId,
+        details=details
+    )
+
 
 def retrieve_item(item_id, cargo_collection, zone_collection):
     """
@@ -52,6 +67,10 @@ def retrieve_item(item_id, cargo_collection, zone_collection):
         "itemName": target["name"]
     }]
 
+    # Log the action
+    log_action(log_collection, target)
+
+    # Remove item from storage
     cargo_collection.delete_one({"_id": target["_id"]})
 
     return {

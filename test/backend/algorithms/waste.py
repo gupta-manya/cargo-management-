@@ -1,5 +1,6 @@
-from algorithms import logs
-from configuration import log_collection
+from algorithms.logs import log_action
+
+from configuration import log_collection , zone_collection
 from datetime import datetime
 from pymongo.collection import Collection
 
@@ -31,7 +32,8 @@ def identify_waste_items(cargo_collection: Collection):
     return result
 
 
-def plan_return_of_waste(cargo_collection: Collection, undocking_container_id: str, undocking_date: str, max_weight: float):
+def plan_return_of_waste(cargo_collection: Collection, undocking_container_id: str, undocking_date: datetime, max_weight: float):
+
     waste_items = identify_waste_items(cargo_collection)
     selected_items = []
     total_weight = 0
@@ -39,13 +41,52 @@ def plan_return_of_waste(cargo_collection: Collection, undocking_container_id: s
 
     for item in waste_items:
         mongo_item = cargo_collection.find_one({"item_id": item["itemId"]})
-        item_weight = mongo_item["mass_kg"]
-        item_volume = mongo_item["width_cm"] * mongo_item["depth_cm"] * mongo_item["height"]
+        
+        if not mongo_item:
+            log_action(
+    log_collection,
+    userId="system",
+    actionType="plan_return_of_waste",
+    itemId=item["itemId"],
+    details={"message": f"Error processing item {item['itemId']}: {str(e)}"}
+)
 
-        if total_weight + item_weight <= max_weight:
-            selected_items.append((item, mongo_item))
-            total_weight += item_weight
-            total_volume += item_volume
+            continue
+
+        try:
+            item_weight = float(mongo_item.get("mass_kg", 0))
+            width = float(mongo_item.get("width_cm", 0))
+            depth = float(mongo_item.get("depth_cm", 0))
+            height = float(mongo_item.get("height", 0))
+            item_volume = width * depth * height
+
+            if total_weight + item_weight <= max_weight:
+                selected_items.append((item, mongo_item))
+                total_weight += item_weight
+                total_volume += item_volume
+            log_action(
+        log_collection,
+        userId="system",  # or pull from auth/session
+        actionType="return_selection",
+        itemId=item["itemId"],
+        details={
+            "mass": item_weight,
+            "volume": item_volume,
+            "containerId": item["containerId"]
+        }
+    )   
+                
+        except Exception as e:
+            log_action(
+    log_collection,
+    userId="system",
+    actionType="plan_return_of_waste",
+    itemId=item["itemId"],
+    details={"message": f"Error processing item {item['itemId']}: {str(e)}"}
+)
+
+            continue
+
 
     return_plan = []
     retrieval_steps = []
