@@ -32,8 +32,9 @@ def find_empty_space(container: dict, item_dims: Tuple[float, float, float],
     max_x, max_y, max_z = container["width_cm"], container["depth_cm"], container["height_cm"]
     item_w, item_d, item_h = item_dims
 
-    step = 1.0
+    step = 1
     for x in range(0, int(max_x - item_w) + 1, int(step)):
+
         for y in range(0, int(max_y - item_d) + 1, int(step)):
             for z in range(0, int(max_z - item_h) + 1, int(step)):
                 start = (x, y, z)
@@ -67,7 +68,8 @@ def store_item(item: dict, cargo_collection: Collection, zone_collection: Collec
 
         start, end = find_empty_space(container, item_dims, used_space)
 
-        if start and end:
+        if start is not None and end is not None:
+
             item["container_id"] = container_id
             item["zone"] = zone
             item["startCoordinates"] = start
@@ -90,4 +92,4 @@ def store_item(item: dict, cargo_collection: Collection, zone_collection: Collec
     for reason in failure_reasons:
         print(" -", reason)
 
-    raise Exception("No suitable container found for placement")
+    raise Exception(f"Failed to place item '{item['item_id']}' in any container.")
