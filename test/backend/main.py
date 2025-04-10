@@ -133,6 +133,7 @@ def place_item(item: Item):
 
 @app.post("/import-items/")
 async def import_items(file: UploadFile = File(...)):
+    errors = []
     if not file.filename or not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported.")
 
@@ -170,7 +171,7 @@ async def import_items(file: UploadFile = File(...)):
 
             store_item(item_data, cargo_collection, zone_collection)
             inserted_items.append(item.item_id)
-            errors = []
+            
         except Exception as e:
             errors.append({"item": record.get("item_id"), "error": str(e)})
 
